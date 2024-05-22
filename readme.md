@@ -2,6 +2,10 @@
 Code for paper "Unsupervised Deep Learning-based Asymmetric Fiber Orientation Distribution Functions Estimation on diffusion MRI"
 ![framework](img/framework.png)
 
+> [Notice]
+>
+> Partial codes are coming soon...
+
 ## Setup
 The main environment is:
 - cuda 11.3
@@ -21,9 +25,7 @@ You need to create a folder containing the dmri data. The file name in this fold
 ``` 
 bash estimate.sh
 ```
-> [Notice]
->
-> Partial codes are coming soon...
+
 
 <!-- ## References
 Thanks to the code of <a href=https://github.com/AxelElaldi/e3so3_conv>e3so3_conv</a>, this is the project we rely on.
