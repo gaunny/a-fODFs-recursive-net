@@ -18,7 +18,7 @@ The main environment is:
 ## Datasets
 You need to create a folder containing the dmri data. The file name in this folder must be: 
 1. dmri image: ```dmri_data.nii.gz ```
-2. bvals file: ```bvales.bvals```
+2. bvals file: ```bvals.bvals```
 3. bvecs file: ```bvecs.bvecs```
 
 ## Train Model and Inference on your data
