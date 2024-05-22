@@ -21,6 +21,9 @@ You need to create a folder containing the dmri data. The file name in this fold
 ``` 
 bash estimate.sh
 ```
+> [Notice]
+>
+> Partial codes are coming soon...
 
 <!-- ## References
 Thanks to the code of <a href=https://github.com/AxelElaldi/e3so3_conv>e3so3_conv</a>, this is the project we rely on.
