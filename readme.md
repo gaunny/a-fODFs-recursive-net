@@ -22,7 +22,7 @@ You need to create a folder containing the dmri data. The file name in this fold
 bash estimate.sh
 ```
 
-## References
+<!-- ## References
 Thanks to the code of <a href=https://github.com/AxelElaldi/e3so3_conv>e3so3_conv</a>, this is the project we rely on.
 Please cite the following papers for using the code and/or the training data:
 ```
@@ -30,4 +30,4 @@ Elaldi A, Gerig G, Dey N,
 “E(3)xSO(3)-Equivariant Networks for Spherical Deconvolution in Diffusion MRI”, 
 in Proceedings of the Medical Imaging with Deep Learning,
 pp. 301-319, 2024.
-```
+``` -->
