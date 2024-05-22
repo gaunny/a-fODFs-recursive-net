@@ -1,7 +1,7 @@
 #!/bin/bash
 # data_path should contain :dmri_data.nii.gz bvals.bvals bvecs.bvecs
 python main.py \
-    --data_path /data/home/dzhang/data1/esd/fibercup/ \
+    --data_path /data1/esd/fibercup/ \
     --n_peaks 3 \
     --iteration 5 \
     --batch_size 64 \
