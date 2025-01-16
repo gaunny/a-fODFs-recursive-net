@@ -1,10 +1,10 @@
 # a-fODFs recursive net
-Code for paper "Unsupervised Deep Learning-based Asymmetric Fiber Orientation Distribution Functions Estimation on diffusion MRI"
+Code for paper "Unsupervised Asymmetric Fiber Orientation Distribution Functions Estimation on diffusion MRI".
 ![framework](img/framework.png)
 
 > [Notice]
 >
-> Partial codes are coming soon...
+> The paper is submitted to MICCAI 2025, and partial codes are coming soon...
 
 ## Setup
 The main environment is:
