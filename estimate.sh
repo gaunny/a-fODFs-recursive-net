@@ -2,16 +2,16 @@
 # data_path should contain :dmri_data.nii.gz bvals.bvals bvecs.bvecs
 python main.py \
     --data_path /data1/esd/fibercup/ \
+    --sh_degree 8 \
     --n_peaks 3 \
     --iteration 5 \
     --batch_size 64 \
     --lr 0.0017 \
     --epoch 5 \
     --filter_start 2 \
-    --sh_degree 10 \
     --kernel_sizeSph 5 \
     --kernel_sizeSpa 3 \
-    --depth 5 \
+    --depth 4 \
     --n_side 16 \
     --save_every 1 \
     --loss_intensity L2 \
