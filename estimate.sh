@@ -1,7 +1,7 @@
 #!/bin/bash
 # data_path should contain :dmri_data.nii.gz bvals.bvals bvecs.bvecs
 python main.py \
-    --data_path /data1/esd/fibercup/ \
+    --data_path /data1/your_subject/ \
     --sh_degree 8 \
     --n_peaks 3 \
     --iteration 5 \
