@@ -1,10 +1,10 @@
 # a-fODFs recursive net
-Code for paper "Unsupervised Asymmetric Fiber Orientation Distribution Functions Estimation on diffusion MRI".
+Code for paper "Modeling Directional Asymmetry in Fiber Orientation Distribution Functions via an Unsupervised Deep Spherical-Convolution Framework".
 ![framework](img/framework.png)
 
 > [Notice]
 >
-> The paper is submitted to MICCAI 2025, and partial codes are coming soon...
+> The paper is submitted to MedIA 2025.
 
 ## Setup
 The main environment is:
@@ -20,6 +20,7 @@ You need to create a folder containing the dmri data. The file name in this fold
 1. dmri image: ```dmri_data.nii.gz ```
 2. bvals file: ```bvals.bvals```
 3. bvecs file: ```bvecs.bvecs```
+4. white matter mask file: ```wm_mask.nii.gz```
 
 ## Train Model and Inference on your data
 ``` 
