@@ -39,7 +39,6 @@ def main(data_path,full_basis,sh_degree,n_peaks,iteration,sphere, global_max, re
     # Generate the fat RF
     response_p_wmgmcsf = generate_fatRF(data_path)
     print('response_p_wmgmcsf',response_p_wmgmcsf)
-    print('response_p_wmgmcsf',response_p_wmgmcsf.shape)
     for iter in range(iteration):
         print('***********************iterations:',iter,'**********************')
         save_path += f'_{iter}'
@@ -206,12 +205,12 @@ def main(data_path,full_basis,sh_degree,n_peaks,iteration,sphere, global_max, re
             odf_array = None
             peaks = pam_from_attrs(PeaksAndMetrics,sphere,peak_indices_gm,peak_values_gm,peak_dirs_gm,gfa_array,qa_array_gm,shm_coeff,B,odf_array)
             reshape_peak = reshape_peaks_for_visualization(peaks)
-            # 获取 mask 中 True 的索引
+            # Obtain the index of True in the mask
             indices = np.where(mask_bool_wmgmcsf[1])
             gm_mask_file = nib.load(f'{data_path}/gm_mask.nii.gz')  
             gm_mask = gm_mask_file.get_fdata()
             data_orgin = np.zeros((gm_mask.shape[0],gm_mask.shape[1],gm_mask.shape[2],n_peaks*3))
-            # 将 data 中的元素放回到 data_orgin 数组的相应位置
+            # Put the elements in data back to the corresponding positions in the data_orgin array
             data_orgin[indices] = reshape_peak
             peak_img = nib.Nifti1Image(data_orgin,affine = dmri_file_affine)
             nib.save(peak_img,os.path.join(response_path, 'peaks_gm.nii.gz'))

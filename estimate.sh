@@ -2,7 +2,7 @@
 # data_path should contain :dmri_data.nii.gz bvals.bvals bvecs.bvecs wm_mask.nii.gz
 # Train the model
 python main.py \
-    --data_path /data/your_subject/ \
+    --data_path data/hcp115320_example/ \
     --sh_degree 8 \
     --n_peaks 3 \
     --iteration 5 \
@@ -31,8 +31,8 @@ python main.py \
     --conv_name mixed \
     --pve_weight 1e-11
 #Inference on subject. 
-python test_main.py \
-        --data_path /data/your_subject/ \
+python test.py \
+        --data_path data/hcp115320_example/ \
         --n_peaks 3 \
         --iteration 1 \
         --batch_size 16 \

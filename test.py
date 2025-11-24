@@ -3,6 +3,7 @@ import os
 import time
 import json
 import numpy as np
+from dipy.data import get_sphere
 from utils.dataset import load_data
 from test_model import spherical_model
 from utils.tools import create_dir,generate_fatRF
