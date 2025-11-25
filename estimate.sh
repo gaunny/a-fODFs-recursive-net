@@ -10,7 +10,7 @@ python main.py \
     --lr 0.0017 \
     --epoch 5 \
     --filter_start 2 \
-    --kernel_sizeSph 5 \
+    --kernel_sizeSph 3 \
     --kernel_sizeSpa 3 \
     --depth 4 \
     --n_side 16 \
@@ -40,7 +40,7 @@ python test.py \
         --epoch 5 \
         --filter_start 2 \
         --sh_degree 8 \
-        --kernel_sizeSph 5 \
+        --kernel_sizeSph 3 \
         --kernel_sizeSpa 3 \
         --depth 4 \
         --n_side 16 \
