@@ -19,7 +19,7 @@ max_length  = 250      # mm
 theta_global= 70       # degree
 seed_density= 2
 use_asi     = True
-deterministic = False  # True -> 使用 peaks 方向
+deterministic = False  # True -> use peaks direction
 
 def asi_to_theta(theta_global_deg, asi_value):
     """
