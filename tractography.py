@@ -8,7 +8,7 @@ from nibabel.streamlines import Tractogram
 import time
 
 fodf_path   = "fodf_asym.nii.gz"
-peaks_path  = "asym_peaks_optimized.nii.gz"
+peaks_path  = "asym_peaks.nii.gz"
 mask_path   = "wm_mask.nii.gz"
 asi_path    = "asi_map.nii.gz"
 out_tck     = "streamlines.tck"
