@@ -1,5 +1,6 @@
 # a-fODFs recursive net
-Code for paper "Asymmetric fiber orientation distribution estimation via unsupervised deep learning".<img width="432" height="49" alt="image" src="https://github.com/user-attachments/assets/cf2d5e79-21e3-49b2-bbc8-dc1bcf940a3d" />
+Code for paper "Asymmetric fiber orientation distribution estimation via unsupervised deep learning"
+<img width="432" height="49" alt="image" src="https://github.com/user-attachments/assets/cf2d5e79-21e3-49b2-bbc8-dc1bcf940a3d" />
 
 ![framework](img/framework.png)
 
