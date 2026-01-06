@@ -3,140 +3,156 @@ import nibabel as nib
 from dipy.data import get_sphere
 from dipy.reconst.shm import sh_to_sf
 from dipy.tracking import utils
-from dipy.tracking.stopping_criterion import BinaryStoppingCriterion
-from nibabel.streamlines import Tractogram
+from dipy.io.stateful_tractogram import Space, StatefulTractogram
+from dipy.io.streamline import save_tractogram
 import time
 
+# =========================================================
+# 1. Configuration & Paths
+# =========================================================
 fodf_path   = "fodf_asym.nii.gz"
 peaks_path  = "asym_peaks.nii.gz"
 mask_path   = "wm_mask.nii.gz"
 asi_path    = "asi_map.nii.gz"
 out_tck     = "streamlines.tck"
 
-step_size   = 0.5      # mm
-min_length  = 10       # mm
-max_length  = 250      # mm
-theta_global= 70       # degree
-seed_density= 2
-use_asi     = True
-deterministic = False  # True -> use peaks direction
+# Tracking parameters
+step_size_vox  = 0.5    # Step size in voxel units
+min_length_mm  = 20.0   # Minimum streamline length in mm
+max_length_mm  = 250.0  # Maximum streamline length in mm
+theta_global   = 70.0   # Maximum turning angle in degrees
+seed_density   = 2      # Number of seeds per voxel side
+use_asi        = True   # Use Asymmetric Index for adaptive theta
+deterministic  = False  # False for Probabilistic (FODF), True for Deterministic (Peaks)
 
 def asi_to_theta(theta_global_deg, asi_value):
-    """
-    ASI 0 -> 0.5*theta_global, ASI 1 -> 1.0*theta_global
-    """
+    """ Scales the max angle based on ASI: ASI 0 -> 0.5*theta, ASI 1 -> 1.0*theta """
     return theta_global_deg * (0.5 + 0.5 * np.clip(asi_value, 0, 1))
 
-fodf_img  = nib.load(fodf_path)
-peaks_img = nib.load(peaks_path)
-mask_img  = nib.load(mask_path)
-asi_img   = nib.load(asi_path) if use_asi else None
+# =========================================================
+# 2. Data Loading & Initialization
+# =========================================================
+print("Loading datasets...")
+fodf_img = nib.load(fodf_path)
+affine   = fodf_img.affine
+# Get physical voxel dimensions for mm-length calculations
+voxel_size = np.mean(fodf_img.header.get_zooms()[:3])
 
-fodf  = fodf_img.get_fdata()
-peaks = peaks_img.get_fdata()  # shape: (X,Y,Z,n_peaks,3)
-mask  = mask_img.get_fdata().astype(bool)
-asi   = asi_img.get_fdata() if use_asi else None
-affine = fodf_img.affine
-inv_aff = np.linalg.inv(affine)
-X, Y, Z = mask.shape
+fodf_data  = fodf_img.get_fdata()
+peaks_data = nib.load(peaks_path).get_fdata()
+mask_data  = nib.load(mask_path).get_fdata().astype(bool)
+asi_data   = nib.load(asi_path).get_fdata() if use_asi else None
+X, Y, Z    = mask_data.shape
 
-# ================== Sphere ==================
+# Setup sphere for FODF sampling
 sphere = get_sphere('repulsion724')
 n_dirs = len(sphere.vertices)
 
-# ================== Stop ==================
-stopping_criterion = BinaryStoppingCriterion(mask)
+# Voxel-space alignment: ISMRM datasets often require X-axis flip for FODF alignment
+v_flipped = sphere.vertices * np.array([-1, 1, 1])
 
-# ================== Seed ==================
-seeds = utils.seeds_from_mask(mask, affine=affine, density=seed_density)
-if len(seeds) == 0:
-    raise RuntimeError("No seeds found!")
-
-# ================== FODF -> spherical values ==================
-fodf_sf = sh_to_sf(fodf, sphere, sh_order=6, full_basis=True)  # shape = (X,Y,Z,n_dirs)
+print("Converting SH coefficients to SF (Spherical Function)...")
+fodf_sf = sh_to_sf(fodf_data, sphere, sh_order=6, full_basis=True)
 fodf_sf = np.clip(fodf_sf, 0, None)
 fodf_sf /= np.maximum(fodf_sf.max(axis=-1, keepdims=True), 1e-6)
 
-# ================== Tracking ==================
+# Generate seeds in Voxel Space (affine=Identity)
+seeds_v = utils.seeds_from_mask(mask_data, affine=np.eye(4), density=seed_density)
+
+# =========================================================
+# 3. Tracking Engine (Bidirectional)
+# =========================================================
 start_time = time.time()
-streamlines = []
+final_streamlines_v = []
+# Calculate max steps for half-length to ensure bidirectional total <= max_length
+max_steps_half = int(max_length_mm / (step_size_vox * voxel_size * 2))
 
-for s_idx, seed in enumerate(seeds):
-    pos = seed[:3].copy()
-    prev_dir = None
-    sl = [pos.copy()]
+print(f"Tracking on {len(seeds_v)} seeds...")
 
-    for step in range(int(max_length / step_size)):
-        voxel_f = nib.affines.apply_affine(inv_aff, pos)
-        vi, vj, vk = np.round(voxel_f).astype(int)
-        vi = np.clip(vi, 0, X - 1)
-        vj = np.clip(vj, 0, Y - 1)
-        vk = np.clip(vk, 0, Z - 1)
+for s_idx, seed in enumerate(seeds_v):
+    tracks = []
+    # Bidirectional loop: grow forward and backward from seed
+    for direction_sign in [1, -1]:
+        pos = seed.copy()
+        prev_dir = None
+        sl_dir = [pos.copy()]
 
-        if not mask[vi, vj, vk]:
-            break
+        for _ in range(max_steps_half):
+            vi, vj, vk = np.round(pos).astype(int)
+            
+            # Boundary & Mask check
+            if not (0 <= vi < X and 0 <= vj < Y and 0 <= vk < Z) or not mask_data[vi, vj, vk]:
+                break
 
-        pmf = fodf_sf[vi, vj, vk].copy()
-        if pmf.sum() <= 0:
-            break
+            # Adaptive theta calculation
+            current_asi = asi_data[vi, vj, vk] if use_asi else 1.0
+            theta_limit = np.deg2rad(asi_to_theta(theta_global, current_asi))
 
-        # Calculate the ASI adaptive Angle threshold
-        theta_local = np.deg2rad(theta_global)
-        if use_asi:
-            theta_local = np.deg2rad(asi_to_theta(theta_global, asi[vi, vj, vk]))
-
-        # Limit the Angle with the previous direction
-        if prev_dir is not None:
-            cos_sim = np.dot(sphere.vertices, prev_dir)
-            cos_sim = np.clip(cos_sim, -1, 1)
-            angles = np.arccos(np.abs(cos_sim))
-            pmf[angles > theta_local] = 0
-            pmf = pmf * np.clip(cos_sim, 0, 1)
-
-        if pmf.sum() <= 0:
-            break
-
-        pmf /= pmf.sum()
-
-        if deterministic:
-            # deterministic, asym peaks
-            peak_dirs = peaks[vi, vj, vk]  # shape: (n_peaks,3)
-            if prev_dir is not None:
-                cos_sim_peak = np.dot(peak_dirs, prev_dir)
-                idx = np.argmax(np.abs(cos_sim_peak))
-                new_dir = peak_dirs[idx]
-                if np.dot(new_dir, prev_dir) < 0:
-                    new_dir = -new_dir
+            if deterministic:
+                # DETERMINISTIC: Follow Peaks
+                voxel_peaks = peaks_data[vi, vj, vk]
+                if prev_dir is None:
+                    new_dir = voxel_peaks[0] * direction_sign
+                else:
+                    cos_sims = np.dot(voxel_peaks, prev_dir)
+                    best_idx = np.argmax(np.abs(cos_sims))
+                    new_dir = voxel_peaks[best_idx]
+                    # Ensure direction continuity
+                    if np.dot(new_dir, prev_dir) < 0:
+                        new_dir = -new_dir
+                    # Angle constraint check
+                    if np.dot(new_dir, prev_dir) < np.cos(theta_limit):
+                        break
             else:
-                new_dir = peak_dirs[0]
-        else:
-            # probabilistic, FODF
-            idx = np.random.choice(n_dirs, p=pmf)
-            new_dir = sphere.vertices[idx]
-            if prev_dir is not None and np.dot(new_dir, prev_dir) < 0:
-                new_dir = -new_dir
+                # PROBABILISTIC: Sample from FODF PMF
+                pmf = fodf_sf[vi, vj, vk].copy()
+                if prev_dir is not None:
+                    cos_sim = np.dot(v_flipped, prev_dir)
+                    # Mask out directions exceeding theta_limit or in the back hemisphere
+                    pmf[np.arccos(np.clip(np.abs(cos_sim), -1, 1)) > theta_limit] = 0
+                    pmf = pmf * np.clip(cos_sim, 0, 1)
+                
+                if pmf.sum() <= 0: 
+                    break
+                    
+                pmf /= pmf.sum()
+                idx = np.random.choice(n_dirs, p=pmf)
+                new_dir = v_flipped[idx]
 
-        pos = pos + new_dir * step_size
-        sl.append(pos.copy())
-        prev_dir = new_dir
+            # Step forward in voxel units
+            pos += new_dir * step_size_vox
+            sl_dir.append(pos.copy())
+            prev_dir = new_dir
+        
+        tracks.append(sl_dir)
 
-        if len(sl) * step_size >= max_length:
-            break
+    # Merge backward (reversed) and forward tracks
+    full_sl_v = np.array(tracks[0][::-1][:-1] + tracks[1])
+    
+    # Filter by physical length (mm)
+    if len(full_sl_v) * step_size_vox * voxel_size >= min_length_mm:
+        final_streamlines_v.append(full_sl_v)
 
-    if len(sl) * step_size >= min_length:
-        streamlines.append(np.array(sl))
+    if (s_idx + 1) % 1000 == 0:
+        print(f"Processed {s_idx + 1}/{len(seeds_v)} seeds...")
 
-    if (s_idx + 1) % 50 == 0:
-        print(f"Processed {s_idx + 1}/{len(seeds)} seeds, streamlines so far: {len(streamlines)}")
+# =========================================================
+# 4. Coordinate Transformation & Saving
+# =========================================================
+print(f"Total streamlines found: {len(final_streamlines_v)}")
 
-elapsed = time.time() - start_time
-print(f"Tracking done in {elapsed:.1f}s, total streamlines: {len(streamlines)}")
+if final_streamlines_v:
+    final_streamlines_ras = []
+    # Convert Voxel streamlines to RASMM space (World Coordinates)
+    # Formula: P_ras = Affine * [P_voxel, 1]^T
+    for sl_v in final_streamlines_v:
+        homo_v = np.hstack([sl_v, np.ones((len(sl_v), 1))])
+        ras_coords = np.dot(affine, homo_v.T).T[:, :3]
+        final_streamlines_ras.append(ras_coords.astype(np.float32))
 
-# ================== save TCK ==================
-if len(streamlines) > 0:
-    tractogram = Tractogram(streamlines=streamlines, affine_to_rasmm=affine)
-    nib.streamlines.save(tractogram, out_tck)
-    print("Saved:", out_tck)
+    # Initialize StatefulTractogram to link streamlines with NIfTI header info
+    sft = StatefulTractogram(final_streamlines_ras, fodf_img, Space.RASMM)
+    save_tractogram(sft, out_tck)
+    print(f"Successfully saved tracking results to: {out_tck}")
 else:
     print("No streamlines generated.")
-
